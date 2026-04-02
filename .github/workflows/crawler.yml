@@ -44,7 +44,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
   actions: write
 
 jobs:
@@ -168,3 +168,15 @@ jobs:
           S3_REGION: ${{ secrets.S3_REGION }}
           GITHUB_ACTIONS: true
         run: uv run python -m trendradar
+
+      - name: Commit and Push changes
+        if: success()
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          # 添加 index.html 和数据库文件
+          git add index.html
+          git add output/news/*.db || true
+          # 提交更改，如果没有更改则忽略错误
+          git commit -m "Update Hot News and Report [skip ci]" || echo "No changes to commit"
+          git push
