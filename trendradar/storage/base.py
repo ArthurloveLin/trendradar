@@ -384,6 +384,19 @@ class StorageBackend(ABC):
             保存的文件路径
         """
         pass
+    @abstractmethod
+    def save_json_report(self, json_content: str, filename: str) -> Optional[str]:
+        """
+        保存 JSON 报告
+
+        Args:
+            json_content: JSON 字符串内容
+            filename: 文件名
+
+        Returns:
+            保存的文件路径或远程 Key
+        """
+        pass
 
     @abstractmethod
     def is_first_crawl_today(self, date: Optional[str] = None) -> bool:

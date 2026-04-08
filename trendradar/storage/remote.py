@@ -639,6 +639,62 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
             print(f"[远程存储] 保存 HTML 报告失败: {e}")
             return None
 
+    def save_json_report(self, json_content: str, filename: str) -> Optional[str]:
+        """
+        保存 JSON 报告到远程存储 (S3/R2)
+
+        Args:
+            json_content: JSON 字符串内容
+            filename: 文件名（如果包含路径，则相对于存储桶根目录）
+
+        Returns:
+            Optional[str]: 存储的具体路径（或文件名）
+        """
+        try:
+            # 同时也保存一份到本地临时目录以供调试或回退
+            date_folder = self._format_date_folder()
+            json_dir = self.temp_dir / date_folder / "json"
+            json_dir.mkdir(parents=True, exist_ok=True)
+            local_file_path = json_dir / filename
+
+            with open(local_file_path, "w", encoding="utf-8") as f:
+                f.write(json_content)
+
+            # 上传到远程存储
+            # 获取远程 Key。支持两种形式：
+            # 1. 直接传入 reports/latest.json
+            # 2. 传入 latest.json，自动补齐日期路径
+            if "/" in filename:
+                r2_key = filename
+            else:
+                r2_key = f"reports/{date_folder}/{filename}"
+
+            content_bytes = json_content.encode("utf-8")
+            self.s3_client.put_object(
+                Bucket=self.bucket_name,
+                Key=r2_key,
+                Body=content_bytes,
+                ContentLength=len(content_bytes),
+                ContentType='application/json',
+            )
+
+            # 同时也更新一个最新的 reports/latest.json 方便固定链接访问
+            latest_key = "reports/latest.json"
+            self.s3_client.put_object(
+                Bucket=self.bucket_name,
+                Key=latest_key,
+                Body=content_bytes,
+                ContentLength=len(content_bytes),
+                ContentType='application/json',
+            )
+
+            print(f"[远程存储] JSON 报告已上传: {r2_key} 和 {latest_key}")
+            return r2_key
+
+        except Exception as e:
+            print(f"[远程存储] 上传 JSON 报告失败: {e}")
+            return None
+
     # ========================================
     # 远程特有功能：资源清理
     # ========================================

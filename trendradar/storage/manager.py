@@ -238,6 +238,10 @@ class StorageManager:
         """保存 HTML 报告"""
         return self.get_backend().save_html_report(html_content, filename)
 
+    def save_json_report(self, json_content: str, filename: str) -> Optional[str]:
+        """保存 JSON 报告"""
+        return self.get_backend().save_json_report(json_content, filename)
+
     def is_first_crawl_today(self, date: Optional[str] = None) -> bool:
         """检查是否是当天第一次抓取"""
         return self.get_backend().is_first_crawl_today(date)

@@ -902,6 +902,12 @@ class NewsAnalyzer:
                 frequency_file=self.frequency_file,
             )
 
+        # JSON 生成 (总是尝试生成，内部由 AppContext 处理存储)
+        report_data = self.ctx.prepare_report(
+            stats, failed_ids, new_titles, id_to_name, mode, self.frequency_file
+        )
+        self.ctx.generate_json(report_data)
+
         return stats, html_file, ai_result, rss_items
 
     def _send_notification_if_needed(

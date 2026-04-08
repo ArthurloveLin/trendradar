@@ -377,6 +377,45 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
             print(f"[本地存储] 保存 HTML 报告失败: {e}")
             return None
 
+    def save_json_report(self, json_content: str, filename: str) -> Optional[str]:
+        """
+        保存 JSON 报告
+
+        新结构：output/json/{date}/{filename}
+
+        Args:
+            json_content: JSON 字符串内容
+            filename: 文件名
+
+        Returns:
+            保存的文件路径
+        """
+        try:
+            date_folder = self._format_date_folder()
+            json_dir = self.data_dir / "json" / date_folder
+            json_dir.mkdir(parents=True, exist_ok=True)
+
+            # 如果文件名包含路径，只取最后一级
+            if "/" in filename:
+                filename = filename.split("/")[-1]
+
+            file_path = json_dir / filename
+
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(json_content)
+
+            # 同时也保存一份到 output/latest.json 方便本地访问
+            latest_file = self.data_dir / "latest.json"
+            with open(latest_file, "w", encoding="utf-8") as f:
+                f.write(json_content)
+
+            print(f"[本地存储] JSON 报告已保存: {file_path} 和 {latest_file}")
+            return str(file_path)
+
+        except Exception as e:
+            print(f"[本地存储] 保存 JSON 报告失败: {e}")
+            return None
+
     # ========================================
     # 本地特有功能：资源清理
     # ========================================

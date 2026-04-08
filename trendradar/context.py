@@ -32,6 +32,7 @@ from trendradar.report import (
     generate_html_report,
     render_html_content,
 )
+from trendradar.report.json_export import generate_json_report
 from trendradar.notification import (
     render_feishu_content,
     render_dingtalk_content,
@@ -338,6 +339,20 @@ class AppContext:
             matches_word_groups_func=self.matches_word_groups,
             load_frequency_words_func=lambda: self.load_frequency_words(frequency_file),
         )
+
+    def generate_json(self, report_data: Dict) -> str:
+        """
+        生成 JSON 报告并保存
+
+        Args:
+            report_data: 报告数据
+
+        Returns:
+            str: 保存的路径或远程 Key
+        """
+        json_content = generate_json_report(report_data)
+        filename = f"{self.format_time()}.json"
+        return self.get_storage_manager().save_json_report(json_content, filename)
 
     def render_html(
         self,
