@@ -136,6 +136,7 @@ def prepare_report_data(
         "total_new_count": sum(
             len(source["titles"]) for source in processed_new_titles
         ),
+        "generated_at": datetime.now().isoformat(),
     }
 
 
