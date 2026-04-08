@@ -25,6 +25,7 @@ def prepare_report_data(
     load_frequency_words_func: Optional[Callable] = None,
     show_new_section: bool = True,
     rss_items: Optional[List[Dict]] = None,
+    standalone_data: Optional[Dict] = None,
 ) -> Dict:
     """
     准备报告数据
@@ -142,6 +143,7 @@ def prepare_report_data(
         ),
         "generated_at": datetime.now(CST).isoformat(),
         "rss_items": rss_items or [],
+        "standalone_data": standalone_data,
     }
 
 

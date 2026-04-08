@@ -294,6 +294,7 @@ class AppContext:
         mode: str = "daily",
         frequency_file: Optional[str] = None,
         rss_items: Optional[List[Dict]] = None,
+        standalone_data: Optional[Dict] = None,
     ) -> Dict:
         """准备报告数据"""
         return prepare_report_data(
@@ -307,6 +308,7 @@ class AppContext:
             load_frequency_words_func=lambda: self.load_frequency_words(frequency_file),
             show_new_section=self.show_new_section,
             rss_items=rss_items,
+            standalone_data=standalone_data,
         )
 
     def generate_html(

@@ -906,6 +906,7 @@ class NewsAnalyzer:
         report_data = self.ctx.prepare_report(
             stats, failed_ids, new_titles, id_to_name, mode, self.frequency_file,
             rss_items=rss_items,
+            standalone_data=standalone_data,
         )
         self.ctx.generate_json(report_data)
 
