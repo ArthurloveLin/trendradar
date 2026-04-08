@@ -8,8 +8,10 @@
 """
 
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Callable
+
+CST = timezone(timedelta(hours=8))
 
 
 def prepare_report_data(
@@ -22,6 +24,7 @@ def prepare_report_data(
     matches_word_groups_func: Optional[Callable] = None,
     load_frequency_words_func: Optional[Callable] = None,
     show_new_section: bool = True,
+    rss_items: Optional[List[Dict]] = None,
 ) -> Dict:
     """
     准备报告数据
@@ -137,7 +140,8 @@ def prepare_report_data(
         "total_new_count": sum(
             len(source["titles"]) for source in processed_new_titles
         ),
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": datetime.now(CST).isoformat(),
+        "rss_items": rss_items or [],
     }
 
 

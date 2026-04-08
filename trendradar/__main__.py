@@ -904,7 +904,8 @@ class NewsAnalyzer:
 
         # JSON 生成 (总是尝试生成，内部由 AppContext 处理存储)
         report_data = self.ctx.prepare_report(
-            stats, failed_ids, new_titles, id_to_name, mode, self.frequency_file
+            stats, failed_ids, new_titles, id_to_name, mode, self.frequency_file,
+            rss_items=rss_items,
         )
         self.ctx.generate_json(report_data)
 
@@ -977,7 +978,7 @@ class NewsAnalyzer:
                     )
 
             # 准备报告数据
-            report_data = self.ctx.prepare_report(stats, failed_ids, new_titles, id_to_name, mode, frequency_file=self.frequency_file)
+            report_data = self.ctx.prepare_report(stats, failed_ids, new_titles, id_to_name, mode, frequency_file=self.frequency_file, rss_items=rss_items)
 
             # 是否发送版本更新信息
             update_info_to_send = self.update_info if cfg["SHOW_VERSION_UPDATE"] else None
