@@ -120,9 +120,56 @@ rss:
     - id: "ruanyifeng"
       name: "阮一峰的网络日志"
       url: "http://www.ruanyifeng.com/blog/atom.xml"
-      enabled: false                  # 禁用
-      # max_age_days: 3               # 示例：推送 3 天内的文章（更新较慢的博客）
-     
+      enabled: true
+
+    - id: "v2ex"
+      name: "V2EX 每日热议"
+      url: "https://v2ex.com/index.xml"
+
+    - id: "solidot"
+      name: "奇客 Solidot"
+      url: "https://www.solidot.org/index.rss"
+
+    - id: "hn-top"
+      name: "Hacker News Top"
+      url: "https://hnrss.org/frontpage?points=100"
+
+    - id: "techcrunch"
+      name: "TechCrunch"
+      url: "https://techcrunch.com/feed/"
+
+    - id: "openai"
+      name: "OpenAI Blog"
+      url: "https://openai.com/news/rss.xml"
+
+    - id: "anthropic"
+      name: "Anthropic News"
+      url: "https://rsshub.app/anthropic/news"
+
+    - id: "google-research"
+      name: "Google Research"
+      url: "https://research.google/blog/rss"
+
+    - id: "google-developers"
+      name: "Google Developers"
+      url: "https://feeds.feedburner.com/GDBcode"
+
+    - id: "sw-testing-weekly"
+      name: "Software Testing Weekly"
+      url: "https://softwaretestingweekly.com/feed/"
+
+    - id: "google-testing"
+      name: "Google Testing Blog"
+      url: "https://testing.googleblog.com/atom.xml"
+
+    - id: "testerhome"
+      name: "TesterHome 社区"
+      url: "https://rsshub.app/testerhome/newest"
+
+    - id: "test-guild"
+      name: "Test Guild (自动化测试)"
+      url: "https://testguild.com/feed"
+
     - id: "yahoo-finance"
       name: "雅虎财经"
       url: "https://finance.yahoo.com/news/rssindex"
@@ -278,7 +325,7 @@ display:
   #   - AI 分析：由 ai_analysis.include_standalone 开关控制，将完整数据送入 AI 做深度分析
   # 两者共享此处的平台/RSS 配置，但开关互相独立（可只开 AI 分析、不推送展示）
   standalone:
-    platforms: ["zhihu", "wallstreetcn-hot"]     # 热榜平台 ID 列表（如 ["zhihu", "weibo"]）
+    platforms: ["weibo", "ifeng", "toutiao", "zhihu", "wallstreetcn-hot"]     # 热榜平台 ID 列表（如 ["zhihu", "weibo"]）
     rss_feeds: []                     # RSS 源 ID 列表（如 ["hacker-news"]）
     max_items: 20                     # 每个源最多展示条数（0=不限制）
 
