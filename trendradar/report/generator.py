@@ -8,10 +8,9 @@
 """
 
 from pathlib import Path
-from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Callable
 
-CST = timezone(timedelta(hours=8))
+from trendradar.utils.time import get_configured_time
 
 
 def prepare_report_data(
@@ -141,7 +140,7 @@ def prepare_report_data(
         "total_new_count": sum(
             len(source["titles"]) for source in processed_new_titles
         ),
-        "generated_at": datetime.now(CST).isoformat(),
+        "generated_at": get_configured_time().isoformat(),
         "rss_items": rss_items or [],
         "standalone_data": standalone_data,
     }

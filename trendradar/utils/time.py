@@ -132,8 +132,9 @@ def format_iso_time_friendly(
                     dt = datetime.fromisoformat(iso_time.replace("T", " ").split(".")[0])
                 else:
                     dt = datetime.fromisoformat(iso_time.split(".")[0])
-                # 假设为 UTC 时间
-                dt = pytz.UTC.localize(dt)
+                # 假设为目标时区的本地时间（避免双重偏移）
+                target_tz = pytz.timezone(target_timezone)
+                dt = target_tz.localize(dt)
             except ValueError:
                 pass
 
