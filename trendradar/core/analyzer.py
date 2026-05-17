@@ -212,7 +212,7 @@ def count_word_frequency(
 
     word_stats = {}
     total_titles = 0
-    processed_titles = {}
+    seen_titles: set = set()
     matched_new_count = 0
 
     if title_info is None:
@@ -227,11 +227,8 @@ def count_word_frequency(
     for source_id, titles_data in results_to_process.items():
         total_titles += len(titles_data)
 
-        if source_id not in processed_titles:
-            processed_titles[source_id] = {}
-
         for title, title_data in titles_data.items():
-            if title in processed_titles.get(source_id, {}):
+            if title in seen_titles:
                 continue
 
             # 使用统一的匹配逻辑
@@ -360,9 +357,7 @@ def count_word_frequency(
                     }
                 )
 
-                if source_id not in processed_titles:
-                    processed_titles[source_id] = {}
-                processed_titles[source_id][title] = True
+                seen_titles.add(title)
 
                 break
 
