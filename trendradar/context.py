@@ -765,47 +765,41 @@ class AppContext:
         if total_pending == 0:
             print("[AI筛选] 没有新增新闻需要分类")
 
-        # 5. 批量分类
-        batch_size = filter_config.get("BATCH_SIZE", 200)
-        batch_interval = filter_config.get("BATCH_INTERVAL", 5)
-        total_results = []
-        batch_count = 0  # 跨热榜和 RSS 的全局批次计数
+        # 5. 批量分类（并发）
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        batch_size = filter_config.get("BATCH_SIZE", 100)
+        max_workers = filter_config.get("BATCH_WORKERS", 4)
 
-        # 处理热榜
+        all_batches = []
         for i in range(0, len(pending_news), batch_size):
-            if batch_count > 0 and batch_interval > 0:
-                import time
-                print(f"[AI筛选] 批次间隔等待 {batch_interval} 秒...")
-                time.sleep(batch_interval)
-            batch = pending_news[i:i + batch_size]
-            titles_for_ai = [
-                {"id": n["id"], "title": n["title"], "source": n.get("source_name", "")}
-                for n in batch
-            ]
-            batch_results = ai_filter.classify_batch(titles_for_ai, active_tags, interests_content)
-            for r in batch_results:
-                r["source_type"] = "hotlist"
-            total_results.extend(batch_results)
-            batch_count += 1
-            print(f"[AI筛选] 热榜批次 {i // batch_size + 1}: {len(batch)} 条 → {len(batch_results)} 条匹配")
-
-        # 处理 RSS
+            all_batches.append((pending_news[i:i + batch_size], "hotlist", i // batch_size + 1))
         for i in range(0, len(pending_rss), batch_size):
-            if batch_count > 0 and batch_interval > 0:
-                import time
-                print(f"[AI筛选] 批次间隔等待 {batch_interval} 秒...")
-                time.sleep(batch_interval)
-            batch = pending_rss[i:i + batch_size]
+            all_batches.append((pending_rss[i:i + batch_size], "rss", i // batch_size + 1))
+
+        def _run_batch(batch_data):
+            batch, source_type, batch_num = batch_data
             titles_for_ai = [
                 {"id": n["id"], "title": n["title"], "source": n.get("source_name", "")}
                 for n in batch
             ]
-            batch_results = ai_filter.classify_batch(titles_for_ai, active_tags, interests_content)
-            for r in batch_results:
-                r["source_type"] = "rss"
-            total_results.extend(batch_results)
-            batch_count += 1
-            print(f"[AI筛选] RSS 批次 {i // batch_size + 1}: {len(batch)} 条 → {len(batch_results)} 条匹配")
+            results = ai_filter.classify_batch(titles_for_ai, active_tags, interests_content)
+            for r in results:
+                r["source_type"] = source_type
+            label = "热榜" if source_type == "hotlist" else "RSS"
+            print(f"[AI筛选] {label}批次 {batch_num}: {len(batch)} 条 → {len(results)} 条匹配")
+            return results
+
+        total_results = []
+        if all_batches:
+            workers = min(max_workers, len(all_batches))
+            print(f"[AI筛选] 共 {len(all_batches)} 个批次，并发 {workers} 个...")
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                futures = [executor.submit(_run_batch, b) for b in all_batches]
+                for future in as_completed(futures):
+                    try:
+                        total_results.extend(future.result())
+                    except Exception as e:
+                        print(f"[AI筛选] 批次执行异常: {e}")
 
         # 6. 保存结果
         if total_results:

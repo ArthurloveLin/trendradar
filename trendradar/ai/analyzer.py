@@ -73,7 +73,7 @@ class AIAnalyzer:
             print(f"[AI] 配置警告: {error}")
 
         # 从分析配置获取功能参数
-        self.max_news = analysis_config.get("MAX_NEWS_FOR_ANALYSIS", 50)
+        self.max_news = analysis_config.get("MAX_NEWS_FOR_ANALYSIS", 0)  # 0 = 不限制
         self.include_rss = analysis_config.get("INCLUDE_RSS", True)
         self.include_rank_timeline = analysis_config.get("INCLUDE_RANK_TIMELINE", False)
         self.include_standalone = analysis_config.get("INCLUDE_STANDALONE", False)
@@ -295,16 +295,16 @@ class AIAnalyzer:
                         news_lines.append(line)
 
                         news_count += 1
-                        if news_count >= self.max_news:
+                        if self.max_news and news_count >= self.max_news:
                             break
-                if news_count >= self.max_news:
+                if self.max_news and news_count >= self.max_news:
                     break
 
         # RSS 内容（仅在启用时构建）
         if self.include_rss and rss_stats:
-            remaining = self.max_news - news_count
+            remaining = (self.max_news - news_count) if self.max_news else None
             for stat in rss_stats:
-                if rss_count >= remaining:
+                if remaining is not None and rss_count >= remaining:
                     break
                 word = stat.get("word", "")
                 titles = stat.get("titles", [])
@@ -333,7 +333,7 @@ class AIAnalyzer:
                         rss_lines.append(line)
 
                         rss_count += 1
-                        if rss_count >= remaining:
+                        if remaining is not None and rss_count >= remaining:
                             break
 
         news_content = "\n".join(news_lines) if news_lines else ""

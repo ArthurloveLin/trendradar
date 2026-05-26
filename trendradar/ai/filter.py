@@ -312,6 +312,7 @@ class AIFilter:
         titles: List[Dict],
         tags: List[Dict],
         interests_content: str = "",
+        _retry_depth: int = 0,
     ) -> List[Dict]:
         """
         阶段 B：对一批新闻标题做分类
@@ -378,8 +379,17 @@ class AIFilter:
             response = self.client.chat(messages)
 
             return self._parse_classify_response(response, titles, tags)
+        except RuntimeError as e:
+            if "超时" in str(e) and _retry_depth < 2 and len(titles) > 1:
+                mid = len(titles) // 2
+                print(f"[AI筛选] 分类超时，拆半重试 ({len(titles)} 条 → {mid}+{len(titles) - mid}) [深度={_retry_depth + 1}]")
+                left = self.classify_batch(titles[:mid], tags, interests_content, _retry_depth + 1)
+                right = self.classify_batch(titles[mid:], tags, interests_content, _retry_depth + 1)
+                return left + right
+            print(f"[AI筛选] 分类请求失败 [跳过]: {type(e).__name__}: {e}")
+            return []
         except Exception as e:
-            print(f"[AI筛选] 分类请求失败: {type(e).__name__}: {e}")
+            print(f"[AI筛选] 分类请求失败 [跳过]: {type(e).__name__}: {e}")
             return []
 
     def _parse_classify_response(
