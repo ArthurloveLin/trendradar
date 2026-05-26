@@ -311,10 +311,13 @@ def show_config():
         "SLACK_WEBHOOK_URL",
         # AI 分析配置
         "AI_ANALYSIS_ENABLED",
-        "AI_API_KEY",
+        "AI_TRANSLATION_ENABLED",
+        "AI_FILTER_ENABLED",
         "AI_PROVIDER",
-        "AI_MODEL",
-        "AI_BASE_URL",
+        "AGY_BIN",
+        "AGY_DANGEROUSLY_SKIP_PERMISSIONS",
+        "AGY_TIMEOUT",
+        "AGY_OUTPUT_FILE",
         # 远程存储配置
         "S3_BUCKET_NAME",
         "S3_ACCESS_KEY_ID",

@@ -50,8 +50,8 @@ permissions:
 jobs:
   crawl:
     if: github.event_name != 'schedule'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    runs-on: [self-hosted, linux, vps]
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
@@ -117,11 +117,18 @@ jobs:
           # 通用Webhook配置
           GENERIC_WEBHOOK_URL: ${{ secrets.GENERIC_WEBHOOK_URL }}
           GENERIC_WEBHOOK_TEMPLATE: ${{ secrets.GENERIC_WEBHOOK_TEMPLATE }}
-          # AI 配置（ai_analysis 和 ai_translation 共享模型配置）
+
+          # AI 配置：使用 agy 直接替代 API
+          AI_PROVIDER: agy
+          AGY_BIN: /home/arthur/.local/bin/agy
+          AGY_DANGEROUSLY_SKIP_PERMISSIONS: true
+          AGY_TIMEOUT: 180
+
+          # 功能开关（沿用原有 secret 控制）
           AI_ANALYSIS_ENABLED: ${{ secrets.AI_ANALYSIS_ENABLED }}
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
-          AI_MODEL: ${{ secrets.AI_MODEL }}
-          AI_API_BASE: ${{ secrets.AI_API_BASE }}
+          AI_TRANSLATION_ENABLED: ${{ secrets.AI_TRANSLATION_ENABLED }}
+          AI_FILTER_ENABLED: ${{ secrets.AI_FILTER_ENABLED }}
+
           # 远程存储配置
           S3_BUCKET_NAME: ${{ secrets.R2_WARDROBE_BUCKET }}
           S3_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}

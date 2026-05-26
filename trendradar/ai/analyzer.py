@@ -3,7 +3,7 @@
 AI 分析器模块
 
 调用 AI 大模型对热点新闻进行深度分析
-基于 LiteLLM 统一接口，支持 100+ AI 提供商
+基于 agy CLI
 """
 
 import json
@@ -54,7 +54,7 @@ class AIAnalyzer:
         初始化 AI 分析器
 
         Args:
-            ai_config: AI 模型配置（LiteLLM 格式）
+            ai_config: AI 模型配置（agy 格式）
             analysis_config: AI 分析功能配置（language, prompt_file 等）
             get_time_func: 获取当前时间的函数
             debug: 是否开启调试模式
@@ -64,7 +64,7 @@ class AIAnalyzer:
         self.get_time_func = get_time_func
         self.debug = debug
 
-        # 创建 AI 客户端（基于 LiteLLM）
+        # 创建 AI 客户端（agy）
         self.client = AIClient(ai_config)
 
         # 验证配置
@@ -111,26 +111,18 @@ class AIAnalyzer:
         """
         
         # 打印配置信息方便调试
-        model = self.ai_config.get("MODEL", "unknown")
-        api_key = self.client.api_key or ""
-        api_base = self.ai_config.get("API_BASE", "")
-        masked_key = f"{api_key[:5]}******" if len(api_key) >= 5 else "******"
-        model_display = model.replace("/", "/\u200b") if model else "unknown"
+        provider = self.ai_config.get("PROVIDER", "agy")
+        print(f"[AI] Provider: {provider}")
 
-        print(f"[AI] 模型: {model_display}")
-        print(f"[AI] Key : {masked_key}")
+        print(f"[AI] 引擎: agy ({self.client.agy_bin})")
+        agy_timeout = self.ai_config.get("AGY_TIMEOUT", self.ai_config.get("TIMEOUT", 120))
+        print(f"[AI] 参数: agy_timeout={agy_timeout}")
 
-        if api_base:
-            print(f"[AI] 接口: 存在自定义 API 端点")
-
-        timeout = self.ai_config.get("TIMEOUT", 120)
-        max_tokens = self.ai_config.get("MAX_TOKENS", 5000)
-        print(f"[AI] 参数: timeout={timeout}, max_tokens={max_tokens}")
-
-        if not self.client.api_key:
+        valid, error = self.client.validate_config()
+        if not valid:
             return AIAnalysisResult(
                 success=False,
-                error="未配置 AI API Key，请在 config.yaml 或环境变量 AI_API_KEY 中设置"
+                error=error,
             )
 
         # 准备新闻内容并获取统计数据
@@ -186,7 +178,7 @@ class AIAnalyzer:
             print(user_prompt)
             print("=" * 80 + "\n")
 
-        # 调用 AI API（使用 LiteLLM）
+        # 调用 AI（agy）
         try:
             response = self._call_ai(user_prompt)
             result = self._parse_response(response)
@@ -351,7 +343,7 @@ class AIAnalyzer:
         return news_content, rss_content, hotlist_total, rss_total, total_count
 
     def _call_ai(self, user_prompt: str) -> str:
-        """调用 AI API（使用 LiteLLM）"""
+        """调用 AI（agy）"""
         messages = []
         if self.system_prompt:
             messages.append({"role": "system", "content": self.system_prompt})

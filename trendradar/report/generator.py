@@ -7,10 +7,332 @@
 - generate_html_report: 生成 HTML 报告
 """
 
+import hashlib
 from pathlib import Path
-from typing import Dict, List, Optional, Callable
+from typing import Any, Dict, List, Optional, Callable
 
 from trendradar.utils.time import get_configured_time
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    """安全转换为整数，失败时返回默认值。"""
+    try:
+        if value is None:
+            return default
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+SECTION_TITLES = {
+    "core_trends": "核心热点态势",
+    "sentiment_controversy": "舆论风向争议",
+    "signals": "异动与弱信号",
+    "rss_insights": "RSS 深度洞察",
+    "outlook_strategy": "研判策略建议",
+}
+
+
+def _safe_text(value: Any) -> str:
+    """安全转换为字符串并去除首尾空白。"""
+    return str(value).strip() if value is not None else ""
+
+
+def _build_reference(
+    channel: str,
+    source: str,
+    title: str,
+    url: str = "",
+    time_display: str = "",
+) -> Optional[Dict[str, str]]:
+    """构建单条引用记录。"""
+    title_text = _safe_text(title)
+    if not title_text:
+        return None
+
+    source_text = _safe_text(source) or "未知来源"
+    url_text = _safe_text(url)
+    time_text = _safe_text(time_display)
+    raw_key = f"{channel}|{source_text}|{title_text}|{url_text}"
+    ref_key = hashlib.sha1(raw_key.encode("utf-8")).hexdigest()[:12]
+
+    return {
+        "ref_key": ref_key,
+        "channel": channel,
+        "source": source_text,
+        "title": title_text,
+        "url": url_text,
+        "time_display": time_text,
+    }
+
+
+def _dedupe_references(references: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    """按 ref_key 去重并稳定排序。"""
+    deduped: Dict[str, Dict[str, str]] = {}
+    for reference in references:
+        ref_key = reference.get("ref_key", "")
+        if ref_key and ref_key not in deduped:
+            deduped[ref_key] = reference
+
+    return sorted(
+        deduped.values(),
+        key=lambda item: (
+            item.get("source", ""),
+            item.get("title", ""),
+            item.get("url", ""),
+            item.get("channel", ""),
+            item.get("time_display", ""),
+        ),
+    )
+
+
+def _collect_trend_references(stats: List[Dict]) -> List[Dict[str, str]]:
+    """收集趋势看点引用。"""
+    references: List[Dict[str, str]] = []
+    for stat in (stats or [])[:8]:
+        for title in (stat.get("titles") or [])[:3]:
+            if not isinstance(title, dict):
+                continue
+            reference = _build_reference(
+                channel="趋势看点",
+                source=title.get("source_name", "未知来源"),
+                title=title.get("title", ""),
+                url=title.get("url", "") or title.get("mobile_url", ""),
+                time_display=title.get("time_display", ""),
+            )
+            if reference:
+                references.append(reference)
+    return _dedupe_references(references)
+
+
+def _collect_rss_references(rss_items: Optional[List[Dict]]) -> List[Dict[str, str]]:
+    """收集 RSS 引用。"""
+    references: List[Dict[str, str]] = []
+    for group in (rss_items or [])[:8]:
+        if not isinstance(group, dict):
+            continue
+        group_word = _safe_text(group.get("word", ""))
+        for title in (group.get("titles") or [])[:3]:
+            if not isinstance(title, dict):
+                continue
+            source_name = title.get("source_name") or title.get("feed_name") or group_word or "未知来源"
+            reference = _build_reference(
+                channel="RSS订阅",
+                source=source_name,
+                title=title.get("title", ""),
+                url=title.get("url", "") or title.get("mobile_url", ""),
+                time_display=title.get("time_display", ""),
+            )
+            if reference:
+                references.append(reference)
+    return _dedupe_references(references)
+
+
+def _collect_hot_references(standalone_data: Optional[Dict]) -> List[Dict[str, str]]:
+    """收集平台热点引用。"""
+    if not isinstance(standalone_data, dict):
+        return []
+
+    references: List[Dict[str, str]] = []
+
+    for platform in (standalone_data.get("platforms") or [])[:8]:
+        if not isinstance(platform, dict):
+            continue
+        source_name = _safe_text(platform.get("name", platform.get("id", ""))) or "平台热点"
+        for item in (platform.get("items") or [])[:3]:
+            if not isinstance(item, dict):
+                continue
+            reference = _build_reference(
+                channel="平台热点",
+                source=source_name,
+                title=item.get("title", ""),
+                url=item.get("url", ""),
+                time_display=item.get("time_display", "") or item.get("published_at", ""),
+            )
+            if reference:
+                references.append(reference)
+
+    for feed in (standalone_data.get("rss_feeds") or [])[:8]:
+        if not isinstance(feed, dict):
+            continue
+        source_name = _safe_text(feed.get("name", feed.get("id", ""))) or "RSS源"
+        for item in (feed.get("items") or [])[:3]:
+            if not isinstance(item, dict):
+                continue
+            reference = _build_reference(
+                channel="平台热点",
+                source=source_name,
+                title=item.get("title", ""),
+                url=item.get("url", ""),
+                time_display=item.get("time_display", "") or item.get("published_at", ""),
+            )
+            if reference:
+                references.append(reference)
+
+    return _dedupe_references(references)
+
+
+def _collect_section_references(
+    stats: List[Dict],
+    rss_items: Optional[List[Dict]],
+    standalone_data: Optional[Dict],
+) -> Dict[str, List[Dict[str, str]]]:
+    """按板块收集引用候选。"""
+    trend_refs = _collect_trend_references(stats)
+    rss_refs = _collect_rss_references(rss_items)
+    hot_refs = _collect_hot_references(standalone_data)
+
+    def _merge_refs(*groups: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        merged: List[Dict[str, str]] = []
+        for group in groups:
+            merged.extend(group)
+        return _dedupe_references(merged)
+
+    return {
+        "core_trends": _merge_refs(trend_refs[:8], hot_refs[:3]),
+        "sentiment_controversy": _merge_refs(trend_refs[:8]),
+        "signals": _merge_refs(trend_refs[:6], hot_refs[:6]),
+        "rss_insights": _merge_refs(rss_refs[:10], trend_refs[:2]),
+        "outlook_strategy": _merge_refs(trend_refs[:5], rss_refs[:5], hot_refs[:4]),
+    }
+
+
+def _split_paragraphs(content: str) -> List[str]:
+    """将板块文本稳定拆分为段落。"""
+    normalized = _safe_text(content).replace("\r\n", "\n")
+    if not normalized:
+        return []
+
+    blocks = [part.strip() for part in normalized.split("\n\n") if part.strip()]
+    if blocks:
+        return blocks
+
+    lines = [line.strip() for line in normalized.split("\n") if line.strip()]
+    return lines if lines else [normalized]
+
+
+def _build_section_block(
+    section_id: str,
+    title: str,
+    content: str,
+    references: List[Dict[str, str]],
+) -> Dict[str, Any]:
+    """构建单个板块的结构化数据。"""
+    citations: List[Dict[str, Any]] = []
+    for index, reference in enumerate(_dedupe_references(references), start=1):
+        citations.append(
+            {
+                "citation_id": f"{section_id}__{reference['ref_key']}",
+                "citation_no": index,
+                "anchor_id": f"{section_id}-ref-{index:03d}",
+                "channel": reference.get("channel", ""),
+                "source": reference.get("source", "未知来源"),
+                "title": reference.get("title", ""),
+                "url": reference.get("url", ""),
+                "time_display": reference.get("time_display", ""),
+            }
+        )
+
+    paragraphs: List[Dict[str, Any]] = []
+    for index, paragraph_text in enumerate(_split_paragraphs(content), start=1):
+        paragraph_citations: List[Dict[str, Any]] = []
+        if citations:
+            start = ((index - 1) * 2) % len(citations)
+            for offset in range(min(2, len(citations))):
+                paragraph_citations.append(citations[(start + offset) % len(citations)])
+
+        paragraph_citation_nos: List[int] = []
+        paragraph_citation_ids: List[str] = []
+        for citation in paragraph_citations:
+            citation_no = int(citation.get("citation_no", 0))
+            citation_id = str(citation.get("citation_id", ""))
+            if citation_no and citation_no not in paragraph_citation_nos:
+                paragraph_citation_nos.append(citation_no)
+            if citation_id and citation_id not in paragraph_citation_ids:
+                paragraph_citation_ids.append(citation_id)
+
+        paragraphs.append(
+            {
+                "paragraph_id": f"{section_id}__p{index:02d}",
+                "anchor_id": f"{section_id}-p-{index:02d}",
+                "text": paragraph_text,
+                "citation_nos": paragraph_citation_nos,
+                "citation_ids": paragraph_citation_ids,
+            }
+        )
+
+    return {
+        "section_id": section_id,
+        "title": title,
+        "content": _safe_text(content),
+        "paragraphs": paragraphs,
+        "citations": citations,
+    }
+
+
+def _serialize_ai_report(
+    ai_analysis: Optional[Any],
+    stats: Optional[List[Dict]] = None,
+    rss_items: Optional[List[Dict]] = None,
+    standalone_data: Optional[Dict] = None,
+) -> Optional[Dict]:
+    """将 AIAnalysisResult 转为可 JSON 序列化字典。"""
+    if ai_analysis is None:
+        return None
+
+    # 兼容调用方直接传入 dict 的场景
+    if isinstance(ai_analysis, dict):
+        return ai_analysis
+
+    section_texts = {
+        "core_trends": str(getattr(ai_analysis, "core_trends", "") or "").strip(),
+        "sentiment_controversy": str(getattr(ai_analysis, "sentiment_controversy", "") or "").strip(),
+        "signals": str(getattr(ai_analysis, "signals", "") or "").strip(),
+        "rss_insights": str(getattr(ai_analysis, "rss_insights", "") or "").strip(),
+        "outlook_strategy": str(getattr(ai_analysis, "outlook_strategy", "") or "").strip(),
+    }
+
+    section_references = _collect_section_references(
+        stats=stats or [],
+        rss_items=rss_items,
+        standalone_data=standalone_data,
+    )
+    sections = {
+        section_id: _build_section_block(
+            section_id=section_id,
+            title=title,
+            content=section_texts.get(section_id, ""),
+            references=section_references.get(section_id, []),
+        )
+        for section_id, title in SECTION_TITLES.items()
+    }
+
+    standalone_summaries = getattr(ai_analysis, "standalone_summaries", {})
+    if not isinstance(standalone_summaries, dict):
+        standalone_summaries = {}
+
+    has_content = any(
+        _safe_text(section.get("content", "")) for section in sections.values()
+    ) or any(v for v in standalone_summaries.values())
+
+    return {
+        "source": "agy",
+        "success": bool(getattr(ai_analysis, "success", False)),
+        "skipped": bool(getattr(ai_analysis, "skipped", False)),
+        "error": str(getattr(ai_analysis, "error", "") or "").strip(),
+        "mode": str(getattr(ai_analysis, "ai_mode", "") or "").strip(),
+        "total_news": _safe_int(getattr(ai_analysis, "total_news", 0)),
+        "analyzed_news": _safe_int(getattr(ai_analysis, "analyzed_news", 0)),
+        "max_news_limit": _safe_int(getattr(ai_analysis, "max_news_limit", 0)),
+        "hotlist_count": _safe_int(getattr(ai_analysis, "hotlist_count", 0)),
+        "rss_count": _safe_int(getattr(ai_analysis, "rss_count", 0)),
+        "sections": sections,
+        "sections_text": section_texts,
+        "standalone_summaries": {
+            str(k): str(v) for k, v in standalone_summaries.items() if v is not None
+        },
+        "has_content": has_content,
+    }
 
 
 def prepare_report_data(
@@ -25,6 +347,7 @@ def prepare_report_data(
     show_new_section: bool = True,
     rss_items: Optional[List[Dict]] = None,
     standalone_data: Optional[Dict] = None,
+    ai_analysis: Optional[Any] = None,
 ) -> Dict:
     """
     准备报告数据
@@ -143,6 +466,7 @@ def prepare_report_data(
         "generated_at": get_configured_time().isoformat(),
         "rss_items": rss_items or [],
         "standalone_data": standalone_data,
+        "ai_report": _serialize_ai_report(ai_analysis, processed_stats, rss_items, standalone_data),
     }
 
 

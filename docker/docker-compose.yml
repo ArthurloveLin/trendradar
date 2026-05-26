@@ -42,11 +42,15 @@ services:
       # 通用Webhook配置
       - GENERIC_WEBHOOK_URL=${GENERIC_WEBHOOK_URL:-}
       - GENERIC_WEBHOOK_TEMPLATE=${GENERIC_WEBHOOK_TEMPLATE:-}
-      # AI 配置（ai_analysis 和 ai_translation 共享模型配置）
+      # AI 配置（agy-only）
+      - AI_PROVIDER=${AI_PROVIDER:-agy}
+      - AGY_BIN=${AGY_BIN:-/home/arthur/.local/bin/agy}
+      - AGY_DANGEROUSLY_SKIP_PERMISSIONS=${AGY_DANGEROUSLY_SKIP_PERMISSIONS:-true}
+      - AGY_TIMEOUT=${AGY_TIMEOUT:-120}
+      - AGY_OUTPUT_FILE=${AGY_OUTPUT_FILE:-}
       - AI_ANALYSIS_ENABLED=${AI_ANALYSIS_ENABLED:-}
-      - AI_API_KEY=${AI_API_KEY:-}
-      - AI_MODEL=${AI_MODEL:-}
-      - AI_API_BASE=${AI_API_BASE:-}
+      - AI_TRANSLATION_ENABLED=${AI_TRANSLATION_ENABLED:-}
+      - AI_FILTER_ENABLED=${AI_FILTER_ENABLED:-}
       # 远程存储配置（S3 兼容协议）
       - S3_ENDPOINT_URL=${S3_ENDPOINT_URL:-}
       - S3_BUCKET_NAME=${S3_BUCKET_NAME:-}

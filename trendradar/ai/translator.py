@@ -3,7 +3,7 @@
 AI 翻译器模块
 
 对推送内容进行多语言翻译
-基于 LiteLLM 统一接口，支持 100+ AI 提供商
+基于 agy CLI
 """
 
 from dataclasses import dataclass, field
@@ -43,7 +43,7 @@ class AITranslator:
 
         Args:
             translation_config: AI 翻译配置 (AI_TRANSLATION)
-            ai_config: AI 模型配置（LiteLLM 格式）
+            ai_config: AI 模型配置（agy 格式）
         """
         self.translation_config = translation_config
         self.ai_config = ai_config
@@ -53,7 +53,7 @@ class AITranslator:
         self.target_language = translation_config.get("LANGUAGE", "English")
         self.scope = translation_config.get("SCOPE", {"HOTLIST": True, "RSS": True, "STANDALONE": True})
 
-        # 创建 AI 客户端（基于 LiteLLM）
+        # 创建 AI 客户端（agy）
         self.client = AIClient(ai_config)
 
         # 加载提示词模板
@@ -78,8 +78,9 @@ class AITranslator:
             result.error = "翻译功能未启用"
             return result
 
-        if not self.client.api_key:
-            result.error = "未配置 AI API Key"
+        valid, error = self.client.validate_config()
+        if not valid:
+            result.error = error
             return result
 
         if not text or not text.strip():
@@ -93,7 +94,7 @@ class AITranslator:
             user_prompt = user_prompt.replace("{target_language}", self.target_language)
             user_prompt = user_prompt.replace("{content}", text)
 
-            # 调用 AI API
+            # 调用 AI
             response = self._call_ai(user_prompt)
             result.translated_text = response.strip()
             result.success = True
@@ -109,7 +110,7 @@ class AITranslator:
 
     def translate_batch(self, texts: List[str]) -> BatchTranslationResult:
         """
-        批量翻译文本（单次 API 调用）
+        批量翻译文本（单次 AI 调用）
 
         Args:
             texts: 要翻译的文本列表
@@ -128,11 +129,12 @@ class AITranslator:
             batch_result.fail_count = len(texts)
             return batch_result
 
-        if not self.client.api_key:
+        valid, error = self.client.validate_config()
+        if not valid:
             for text in texts:
                 batch_result.results.append(TranslationResult(
                     original_text=text,
-                    error="未配置 AI API Key"
+                    error=error
                 ))
             batch_result.fail_count = len(texts)
             return batch_result
@@ -273,7 +275,7 @@ class AITranslator:
         return translated[:expected_count], raw_parsed_count
 
     def _call_ai(self, user_prompt: str) -> str:
-        """调用 AI API（使用 LiteLLM）"""
+        """调用 AI（agy）"""
         messages = []
         if self.system_prompt:
             messages.append({"role": "system", "content": self.system_prompt})

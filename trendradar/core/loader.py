@@ -259,26 +259,27 @@ def _load_display_config(config_data: Dict) -> Dict:
 
 
 def _load_ai_config(config_data: Dict) -> Dict:
-    """加载 AI 模型配置（LiteLLM 格式）"""
+    """加载 AI 模型配置（agy-only）"""
     ai_config = config_data.get("ai", {})
 
     timeout_env = _get_env_int_or_none("AI_TIMEOUT")
+    agy_timeout_env = _get_env_int_or_none("AGY_TIMEOUT")
+    agy_skip_permissions_env = _get_env_bool("AGY_DANGEROUSLY_SKIP_PERMISSIONS")
+
+    resolved_timeout = agy_timeout_env if agy_timeout_env is not None else timeout_env
 
     return {
-        # LiteLLM 核心配置
-        "MODEL": _get_env_str("AI_MODEL") or ai_config.get("model", ""),
-        "API_KEY": _get_env_str("AI_API_KEY") or ai_config.get("api_key", ""),
-        "API_BASE": _get_env_str("AI_API_BASE") or ai_config.get("api_base", ""),
+        # 后端类型：当前仅支持 agy
+        "PROVIDER": _get_env_str("AI_PROVIDER") or ai_config.get("provider", "agy"),
 
-        # 生成参数
-        "TIMEOUT": timeout_env if timeout_env is not None else ai_config.get("timeout", 120),
-        "TEMPERATURE": ai_config.get("temperature", 1.0),
-        "MAX_TOKENS": ai_config.get("max_tokens", 5000),
+        # 统一超时参数（优先 AGY_TIMEOUT，其次 AI_TIMEOUT）
+        "TIMEOUT": resolved_timeout if resolved_timeout is not None else ai_config.get("timeout", 120),
 
-        # LiteLLM 高级选项
-        "NUM_RETRIES": ai_config.get("num_retries", 2),
-        "FALLBACK_MODELS": ai_config.get("fallback_models", []),
-        "EXTRA_PARAMS": ai_config.get("extra_params", {}),
+        # agy 后端配置
+        "AGY_BIN": _get_env_str("AGY_BIN") or ai_config.get("agy_bin", "/home/arthur/.local/bin/agy"),
+        "AGY_DANGEROUSLY_SKIP_PERMISSIONS": agy_skip_permissions_env if agy_skip_permissions_env is not None else ai_config.get("agy_dangerously_skip_permissions", True),
+        "AGY_TIMEOUT": resolved_timeout if resolved_timeout is not None else ai_config.get("agy_timeout", 120),
+        "AGY_OUTPUT_FILE": _get_env_str("AGY_OUTPUT_FILE") or ai_config.get("agy_output_file", ""),
     }
 
 

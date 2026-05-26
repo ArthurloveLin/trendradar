@@ -907,6 +907,7 @@ class NewsAnalyzer:
             stats, failed_ids, new_titles, id_to_name, mode, self.frequency_file,
             rss_items=rss_items,
             standalone_data=standalone_data,
+            ai_analysis=ai_result,
         )
         self.ctx.generate_json(report_data)
 
@@ -979,7 +980,16 @@ class NewsAnalyzer:
                     )
 
             # 准备报告数据
-            report_data = self.ctx.prepare_report(stats, failed_ids, new_titles, id_to_name, mode, frequency_file=self.frequency_file, rss_items=rss_items)
+            report_data = self.ctx.prepare_report(
+                stats,
+                failed_ids,
+                new_titles,
+                id_to_name,
+                mode,
+                frequency_file=self.frequency_file,
+                rss_items=rss_items,
+                ai_analysis=ai_result,
+            )
 
             # 是否发送版本更新信息
             update_info_to_send = self.update_info if cfg["SHOW_VERSION_UPDATE"] else None

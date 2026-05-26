@@ -295,6 +295,7 @@ class AppContext:
         frequency_file: Optional[str] = None,
         rss_items: Optional[List[Dict]] = None,
         standalone_data: Optional[Dict] = None,
+        ai_analysis: Optional[Any] = None,
     ) -> Dict:
         """准备报告数据"""
         return prepare_report_data(
@@ -309,6 +310,7 @@ class AppContext:
             show_new_section=self.show_new_section,
             rss_items=rss_items,
             standalone_data=standalone_data,
+            ai_analysis=ai_analysis,
         )
 
     def generate_html(
