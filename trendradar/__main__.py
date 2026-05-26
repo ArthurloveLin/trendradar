@@ -475,15 +475,6 @@ class NewsAnalyzer:
             print("[AI] 调度器: 当前时间段不执行 AI 分析")
             return None
 
-        if schedule.once_analyze and schedule.period_key:
-            scheduler = self.ctx.create_scheduler()
-            date_str = self.ctx.format_date()
-            if scheduler.already_executed(schedule.period_key, "analyze", date_str):
-                print(f"[AI] 调度器: 时间段 {schedule.period_name or schedule.period_key} 今天已分析过，跳过")
-                return None
-            else:
-                print(f"[AI] 调度器: 时间段 {schedule.period_name or schedule.period_key} 今天首次分析")
-
         print("[AI] 正在进行 AI 分析...")
         try:
             ai_config = self.ctx.config.get("AI", {})
@@ -558,12 +549,6 @@ class NewsAnalyzer:
                     print(f"[AI] 分析完成（有警告: {result.error}）")
                 else:
                     print("[AI] 分析完成")
-
-                # 记录 AI 分析
-                if schedule.once_analyze and schedule.period_key:
-                    scheduler = self.ctx.create_scheduler()
-                    date_str = self.ctx.format_date()
-                    scheduler.record_execution(schedule.period_key, "analyze", date_str)
             elif result.skipped:
                 print(f"[AI] {result.error}")
             else:
@@ -2285,11 +2270,7 @@ def _handle_status_commands(config: Dict) -> None:
 
         if schedule.period_key:
             print(f"\n🔁 一次性控制:")
-            if schedule.once_analyze:
-                already_analyzed = scheduler.already_executed(schedule.period_key, "analyze", date_str)
-                print(f"  AI 分析:  仅一次 {'(今日已执行 ⚠️)' if already_analyzed else '(今日未执行 ✅)'}")
-            else:
-                print(f"  AI 分析:  不限次数")
+            print(f"  AI 分析:  每次运行都执行")
             if schedule.once_push:
                 already_pushed = scheduler.already_executed(schedule.period_key, "push", date_str)
                 print(f"  推送通知: 仅一次 {'(今日已执行 ⚠️)' if already_pushed else '(今日未执行 ✅)'}")
