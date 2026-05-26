@@ -55,7 +55,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
           clean: true
@@ -77,16 +77,6 @@ jobs:
       #     echo "⏸️  Sleeping for ${DELAY} seconds to spread the load..."
       #     sleep ${DELAY}s
       #     echo "▶️  Delay finished. Starting crawler..."
-
-      - name: Set up Python
-        if: success()
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Install uv
-        if: success()
-        uses: astral-sh/setup-uv@v7
 
       - name: Install dependencies
         if: success()
