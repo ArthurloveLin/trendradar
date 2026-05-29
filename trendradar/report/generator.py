@@ -139,7 +139,7 @@ def _collect_hot_references(standalone_data: Optional[Dict]) -> List[Dict[str, s
         if not isinstance(platform, dict):
             continue
         source_name = _safe_text(platform.get("name", platform.get("id", ""))) or "平台热点"
-        for item in (platform.get("items") or [])[:3]:
+        for item in (platform.get("items") or [])[:8]:
             if not isinstance(item, dict):
                 continue
             reference = _build_reference(
@@ -156,7 +156,7 @@ def _collect_hot_references(standalone_data: Optional[Dict]) -> List[Dict[str, s
         if not isinstance(feed, dict):
             continue
         source_name = _safe_text(feed.get("name", feed.get("id", ""))) or "RSS源"
-        for item in (feed.get("items") or [])[:3]:
+        for item in (feed.get("items") or [])[:8]:
             if not isinstance(item, dict):
                 continue
             reference = _build_reference(
@@ -235,29 +235,13 @@ def _build_section_block(
 
     paragraphs: List[Dict[str, Any]] = []
     for index, paragraph_text in enumerate(_split_paragraphs(content), start=1):
-        paragraph_citations: List[Dict[str, Any]] = []
-        if citations:
-            start = ((index - 1) * 2) % len(citations)
-            for offset in range(min(2, len(citations))):
-                paragraph_citations.append(citations[(start + offset) % len(citations)])
-
-        paragraph_citation_nos: List[int] = []
-        paragraph_citation_ids: List[str] = []
-        for citation in paragraph_citations:
-            citation_no = int(citation.get("citation_no", 0))
-            citation_id = str(citation.get("citation_id", ""))
-            if citation_no and citation_no not in paragraph_citation_nos:
-                paragraph_citation_nos.append(citation_no)
-            if citation_id and citation_id not in paragraph_citation_ids:
-                paragraph_citation_ids.append(citation_id)
-
         paragraphs.append(
             {
                 "paragraph_id": f"{section_id}__p{index:02d}",
                 "anchor_id": f"{section_id}-p-{index:02d}",
                 "text": paragraph_text,
-                "citation_nos": paragraph_citation_nos,
-                "citation_ids": paragraph_citation_ids,
+                "citation_nos": [],
+                "citation_ids": [],
             }
         )
 
