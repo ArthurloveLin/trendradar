@@ -660,7 +660,8 @@ class NewsAnalyzer:
         rss_feed_ids = standalone_config.get("RSS_FEEDS", [])
         max_items = standalone_config.get("MAX_ITEMS", 20)
 
-        if not platform_ids and not rss_feed_ids:
+        # 未显式配置且没有 rss_items 可自动检测时才提前退出
+        if not platform_ids and not rss_feed_ids and not rss_items:
             return None
 
         standalone_data = {
@@ -668,15 +669,16 @@ class NewsAnalyzer:
             "rss_feeds": [],
         }
 
-        # 找出最新批次时间（类似 current 模式的过滤逻辑）
-        latest_time = None
+        # 按平台分别找各自最新批次时间，避免全局 latest_time 把最近未成功抓取的平台整体过滤掉
+        platform_latest_times: Dict[str, str] = {}
         if title_info:
-            for source_titles in title_info.values():
+            for src_id, source_titles in title_info.items():
                 for title_data in source_titles.values():
                     last_time = title_data.get("last_time", "")
                     if last_time:
-                        if latest_time is None or last_time > latest_time:
-                            latest_time = last_time
+                        current = platform_latest_times.get(src_id)
+                        if current is None or last_time > current:
+                            platform_latest_times[src_id] = last_time
 
         # 提取热榜平台数据
         for platform_id in platform_ids:
@@ -685,6 +687,7 @@ class NewsAnalyzer:
 
             platform_name = id_to_name.get(platform_id, platform_id)
             platform_titles = results[platform_id]
+            platform_latest = platform_latest_times.get(platform_id)
 
             items = []
             for title, title_data in platform_titles.items():
@@ -693,9 +696,9 @@ class NewsAnalyzer:
                 if title_info and platform_id in title_info and title in title_info[platform_id]:
                     meta = title_info[platform_id][title]
 
-                # 只保留当前在榜的话题（last_time 等于最新时间）
-                if latest_time and meta:
-                    if meta.get("last_time") != latest_time:
+                # 只保留该平台当前在榜的话题（last_time 等于该平台自身最新时间）
+                if platform_latest and meta:
+                    if meta.get("last_time") != platform_latest:
                         continue
 
                 # 使用当前热榜的排名数据（title_data）进行排序
@@ -739,8 +742,18 @@ class NewsAnalyzer:
                     "items": items,
                 })
 
-        # 提取 RSS 数据
-        if rss_items and rss_feed_ids:
+        # 提取 RSS 数据（未显式配置时自动从 rss_items 推断全部 feed）
+        if rss_items:
+            if not rss_feed_ids:
+                # 按出现顺序去重，自动检测全部 feed_id
+                seen: set = set()
+                rss_feed_ids = []
+                for _item in rss_items:
+                    _fid = _item.get("feed_id", "")
+                    if _fid and _fid not in seen:
+                        seen.add(_fid)
+                        rss_feed_ids.append(_fid)
+
             # 按 feed_id 分组
             feed_items_map = {}
             for item in rss_items:
